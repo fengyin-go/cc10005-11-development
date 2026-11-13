@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { request } from '@/api/client'
+import QuarantinePanel from './quarantine/QuarantinePanel'
 
 const ENDPOINT = '/api/validator'
 const columns = [
@@ -40,8 +41,10 @@ const stats = [
 ]
 
 type Row = Record<string, string | number | null>
+type TabKey = 'rules' | 'quarantine'
 
 export default function ValidatorView() {
+  const [tab, setTab] = useState<TabKey>('quarantine')
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
@@ -65,8 +68,10 @@ export default function ValidatorView() {
   }, [filters])
 
   useEffect(() => {
-    void reload()
-  }, [reload])
+    if (tab === 'rules') {
+      void reload()
+    }
+  }, [reload, tab])
 
   async function runAction(action: string, row: Row) {
     setErrorMessage('')
@@ -89,74 +94,103 @@ export default function ValidatorView() {
       <header className="page-head">
         <div>
           <h2>结果校验管理</h2>
-          <p className="page-desc">维护结果校验规则的输入、执行约束与结果记录，为结果校验提供可验证的数据工程流程。</p>
+          <p className="page-desc">维护结果校验规则的输入、执行约束与结果记录，并对命中阻断的样本执行隔离、重验与放行流转。</p>
         </div>
         <div className="page-actions">
-          <button className="btn primary" type="button" onClick={() => setErrorMessage('校验规则登记入口尚未接入审批流')}>
-            登记校验规则
-          </button>
-          <button className="btn" type="button" onClick={() => window.open(`${ENDPOINT}/export`, '_blank')}>
-            导出结果校验清单
-          </button>
+          {tab === 'rules' && (
+            <>
+              <button className="btn primary" type="button" onClick={() => setErrorMessage('校验规则登记入口尚未接入审批流')}>
+                登记校验规则
+              </button>
+              <button className="btn" type="button" onClick={() => window.open(`${ENDPOINT}/export`, '_blank')}>
+                导出结果校验清单
+              </button>
+            </>
+          )}
         </div>
       </header>
 
-      <div className="stat-row">
-        {stats.map((item) => (
-          <article key={item.label} className="stat-card">
-            <span className="stat-label">{item.label}</span>
-            <strong className="stat-value">{item.value}</strong>
-          </article>
-        ))}
+      <div className="tab-bar" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          className={`tab-item ${tab === 'quarantine' ? 'is-active' : ''}`}
+          onClick={() => setTab('quarantine')}
+        >
+          隔离处置流转
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={`tab-item ${tab === 'rules' ? 'is-active' : ''}`}
+          onClick={() => setTab('rules')}
+        >
+          校验规则清单
+        </button>
       </div>
 
-      <form className="filter-bar" onSubmit={(event) => { event.preventDefault(); void reload() }}>
-        {filterFields.map((field) => (
-          <label key={field} className="filter-item">
-            <span>{field}</span>
-            <input
-              value={filters[field] ?? ''}
-              placeholder={`按${field}检索`}
-              onChange={(event) => setFilters((prev) => ({ ...prev, [field]: event.target.value }))}
-            />
-          </label>
-        ))}
-        <button className="btn" type="submit">查询</button>
-        <button className="btn ghost" type="button" onClick={() => setFilters({})}>重置条件</button>
-      </form>
+      {tab === 'quarantine' ? (
+        <QuarantinePanel />
+      ) : (
+        <>
+          <div className="stat-row">
+            {stats.map((item) => (
+              <article key={item.label} className="stat-card">
+                <span className="stat-label">{item.label}</span>
+                <strong className="stat-value">{item.value}</strong>
+              </article>
+            ))}
+          </div>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            {columns.map((column) => <th key={column}>{column}</th>)}
-            <th>可执行动作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={String(row.id)}>
-              {columns.map((column) => <td key={column}>{row[column] ?? '—'}</td>)}
-              <td className="row-actions">
-                {actions.map((action) => (
-                  <button key={action} className="link" type="button" onClick={() => void runAction(action, row)}>
-                    {action}
-                  </button>
-                ))}
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td className="empty-state" colSpan={columns.length + 1}>暂无结果校验数据，可先登记校验规则</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          <form className="filter-bar" onSubmit={(event) => { event.preventDefault(); void reload() }}>
+            {filterFields.map((field) => (
+              <label key={field} className="filter-item">
+                <span>{field}</span>
+                <input
+                  value={filters[field] ?? ''}
+                  placeholder={`按${field}检索`}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, [field]: event.target.value }))}
+                />
+              </label>
+            ))}
+            <button className="btn" type="submit">查询</button>
+            <button className="btn ghost" type="button" onClick={() => setFilters({})}>重置条件</button>
+          </form>
 
-      <footer className="page-foot">
-        <span>共 {total} 条结果校验记录</span>
-        {errorMessage && <span className="error-text">{errorMessage}</span>}
-      </footer>
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columns.map((column) => <th key={column}>{column}</th>)}
+                <th>可执行动作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={String(row.id)}>
+                  {columns.map((column) => <td key={column}>{row[column] ?? '—'}</td>)}
+                  <td className="row-actions">
+                    {actions.map((action) => (
+                      <button key={action} className="link" type="button" onClick={() => void runAction(action, row)}>
+                        {action}
+                      </button>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td className="empty-state" colSpan={columns.length + 1}>暂无结果校验数据，可先登记校验规则</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <footer className="page-foot">
+            <span>共 {total} 条结果校验记录</span>
+            {errorMessage && <span className="error-text">{errorMessage}</span>}
+          </footer>
+        </>
+      )}
     </section>
   )
 }

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.quarantine_seed import QUARANTINE_SEED_ROWS
+
 SEED_ROWS: dict[str, list[dict[str, Any]]] = {
     "site": [{'id': 1,
   'status': '草稿',
@@ -651,5 +653,6 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
   '凭据有效天数': '登录凭证样例3',
   '会话保持': '登录凭证样例3',
   '刷新触发': '登录凭证样例3',
-  '失效告警': '登录凭证样例3'}]
+  '失效告警': '登录凭证样例3'}],
+    "quarantine_sample": QUARANTINE_SEED_ROWS,
 }
